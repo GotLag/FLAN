@@ -1,7 +1,7 @@
 MOD_NAME = "FLAN"
-CURRENT_VERSION = "1.0.0"
+CURRENT_VERSION = "1.0.1"
 FACTORIO_VERSION = "0.14"
-REBUILD_REQUIRED_VERSION = "1.0.0"
+REBUILD_REQUIRED_VERSION = "1.0.1"
 ENTITY_NAME = "flantenna"
 TECHNOLOGY_NAME = "flan-technology"
 POWER_ENTITY_NAME = "flantenna-power-supply"
@@ -22,10 +22,8 @@ end
 
 function update_global(changes)
   if changes.mod_changes[MOD_NAME] then
-    if is_newer_than(REBUILD_REQUIRED_VERSION) then
-      -- debug_print("FLAN newer than 1.0.0, rebuild not needed.")
-    else
-      -- debug_print("FLAN older than 1.0.0, rebuilding network")
+    if (not changes.mod_changes[MOD_NAME].old_version) or
+      is_newer_than(REBUILD_REQUIRED_VERSION, changes.mod_changes[MOD_NAME].old_version) then
       init_global()
       for _,surface in pairs(game.surfaces) do
         for _,psu in pairs(surface.find_entities_filtered{name=POWER_ENTITY_NAME}) do
@@ -35,22 +33,30 @@ function update_global(changes)
           add_antenna(antenna)
         end
       end
+      for _,player in pairs(game.players) do
+        for _,name in pairs(player.gui.top.children_names) do
+          player.gui.top[name].destroy()
+        end
+        for _,name in pairs(player.gui.left.children_names) do
+          player.gui.left[name].destroy()
+        end
+      end
     end
   end
 end
 
-function is_newer_than(version_string)
-  local current = 0
-  for n in string.gmatch(CURRENT_VERSION, '([^.]+)') do
-    current = current * 100
-    current = current + tonumber(n)
+function is_newer_than(new_version_string, old_version_string)
+  local new_version = 0
+  for n in string.gmatch(new_version_string, '([^.]+)') do
+    new_version = new_version * 100
+    new_version = new_version + tonumber(n)
   end
-  local version = 0
-  for n in string.gmatch(version_string, '([^.]+)') do
-    version = version * 100
-    version = version + tonumber(n)
+  local old_version = 0
+  for n in string.gmatch(old_version_string, '([^.]+)') do
+    old_version = old_version * 100
+    old_version = old_version + tonumber(n)
   end
-  return current > version
+  return new_version > old_version
 end
 
 script.on_init(init_global)
@@ -122,24 +128,33 @@ function update_offsets()
 end
 
 function subtract_signals(index)
-  for type,signals in pairs(global.network[index].signals) do
+  local antenna = global.network[index]
+  for type,signals in pairs(antenna.signals) do
     for name,count in pairs(signals) do
       global.signals[type][name] =
         (global.signals[type][name] or 0) - count
-      global.network[index].signals[type][name] = nil
+      antenna.signals[type][name] = nil
     end
   end
 end
 
 function update_antenna(index)
   subtract_signals(index)
-  if global.network[index].psu.energy > 0 then
-    global.network[index].control.enabled = true
-    local red_circuit =
-      global.network[index].control.get_circuit_network(defines.wire_type.red)
-    local green_circuit =
-      global.network[index].control.get_circuit_network(defines.wire_type.green)
-    local old_parameters = global.network[index].control.parameters.parameters
+  local antenna = global.network[index]
+  if antenna.psu.energy > 0 then
+    local control = antenna.control
+    control.enabled = true
+    if not antenna.red or not antenna.red.valid then
+      antenna.red =
+       control.get_circuit_network(defines.wire_type.red)
+    end
+    local red_circuit = antenna.red
+    if not antenna.green or not antenna.green.valid then
+      antenna.green =
+        control.get_circuit_network(defines.wire_type.green)
+    end
+    local green_circuit = antenna.green
+    local old_parameters = control.parameters.parameters
     local new_parameters = {parameters={}}
     for _,parameter in pairs(old_parameters) do
       if parameter.signal.name then
@@ -157,14 +172,14 @@ function update_antenna(index)
         global.signals[parameter.signal.type][parameter.signal.name] =
           parameter.count + red_signal + green_signal
         -- store inbound for next update
-        global.network[index].signals[parameter.signal.type][parameter.signal.name] =
+        antenna.signals[parameter.signal.type][parameter.signal.name] =
           red_signal + green_signal
       end
       table.insert(new_parameters.parameters, parameter)
     end
-    global.network[index].control.parameters = new_parameters
+    control.parameters = new_parameters
   else
-    global.network[index].control.enabled = false
+    antenna.control.enabled = false
   end
 end
 
