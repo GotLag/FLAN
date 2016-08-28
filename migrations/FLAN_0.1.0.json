@@ -1,0 +1,18 @@
+{
+  "item":
+  [
+    ["wireless-mast", "flantenna"]
+  ],
+  "entity":
+  [
+    ["wireless-mast", "flantenna"]
+  ],
+  "recipe":
+  [
+    ["wireless-mast", "flantenna"]
+  ],
+  "technology":
+  [
+    ["wireless-networks", "flan-technology"]
+  ]
+}

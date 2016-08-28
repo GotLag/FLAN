@@ -1,0 +1,8 @@
+{
+	"name": "FLAN",
+	"version": "1.0.0",
+	"title": "FLAN",
+	"author": "GotLag",
+	"description": "Factorio LAN: adds wireless antennas for circuit networks",
+	"factorio_version": "0.14"
+}
