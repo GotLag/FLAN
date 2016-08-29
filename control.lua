@@ -1,5 +1,5 @@
 MOD_NAME = "FLAN"
-CURRENT_VERSION = "1.0.1"
+CURRENT_VERSION = "1.0.2"
 FACTORIO_VERSION = "0.14"
 REBUILD_REQUIRED_VERSION = "1.0.1"
 ENTITY_NAME = "flantenna"
@@ -34,11 +34,11 @@ function update_global(changes)
         end
       end
       for _,player in pairs(game.players) do
-        for _,name in pairs(player.gui.top.children_names) do
-          player.gui.top[name].destroy()
+        if player.gui.top["flan-toggle"] then
+          player.gui.top["flan-toggle"].destroy()
         end
-        for _,name in pairs(player.gui.left.children_names) do
-          player.gui.left[name].destroy()
+        if player.gui.left["flan-panel"] then
+          player.gui.left["flan-panel"].destroy()
         end
       end
     end
@@ -143,7 +143,6 @@ function update_antenna(index)
   local antenna = global.network[index]
   if antenna.psu.energy > 0 then
     local control = antenna.control
-    control.enabled = true
     if not antenna.red or not antenna.red.valid then
       antenna.red =
        control.get_circuit_network(defines.wire_type.red)
@@ -177,6 +176,7 @@ function update_antenna(index)
       end
       table.insert(new_parameters.parameters, parameter)
     end
+    control.enabled = true
     control.parameters = new_parameters
   else
     antenna.control.enabled = false
