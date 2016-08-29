@@ -1,5 +1,5 @@
 MOD_NAME = "FLAN"
-CURRENT_VERSION = "1.0.2"
+CURRENT_VERSION = "1.0.3"
 FACTORIO_VERSION = "0.14"
 REBUILD_REQUIRED_VERSION = "1.0.1"
 ENTITY_NAME = "flantenna"
@@ -138,11 +138,24 @@ function subtract_signals(index)
   end
 end
 
+function zero_output(index)
+  local control = global.network[index].control
+  local old_parameters = control.parameters.parameters
+  local new_parameters = {parameters={}}
+  for _,parameter in pairs(old_parameters) do
+    if parameter.signal.name then
+      parameter.count = 0
+      table.insert(new_parameters.parameters, parameter)
+    end
+  end
+  control.parameters = new_parameters
+end
+
 function update_antenna(index)
   subtract_signals(index)
   local antenna = global.network[index]
+  local control = antenna.control
   if antenna.psu.energy > 0 then
-    local control = antenna.control
     if not antenna.red or not antenna.red.valid then
       antenna.red =
        control.get_circuit_network(defines.wire_type.red)
@@ -173,13 +186,16 @@ function update_antenna(index)
         -- store inbound for next update
         antenna.signals[parameter.signal.type][parameter.signal.name] =
           red_signal + green_signal
+        table.insert(new_parameters.parameters, parameter)
       end
-      table.insert(new_parameters.parameters, parameter)
     end
-    control.enabled = true
     control.parameters = new_parameters
+    control.enabled = true
   else
-    antenna.control.enabled = false
+    if control.enabled then
+      zero_output(index)
+      antenna.control.enabled = false
+    end
   end
 end
 
